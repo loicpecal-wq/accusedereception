@@ -230,7 +230,7 @@ async function scanGmail() {
 
   console.log('Scan Gmail...', new Date().toLocaleTimeString('fr-FR'));
 
-  const imap = new Imap({ user, password: pass, host: 'imap.gmail.com', port: 993, tls: true });
+  const imap = new Imap({ user, password: pass, host: 'imap.gmail.com', port: 993, tls: true, tlsOptions: { rejectUnauthorized: false } });
 
   return new Promise((resolve) => {
     imap.once('error', (e) => { console.error('IMAP erreur:', e.message); resolve(); });
