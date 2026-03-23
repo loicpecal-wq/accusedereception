@@ -3,6 +3,7 @@ const cors = require('cors');
 const multer = require('multer');
 const fetch = require('node-fetch');
 const Imap = require('imap');
+const FormData = require('form-data');
 const { simpleParser } = require('mailparser');
 
 const app = express();
@@ -171,7 +172,6 @@ async function findAsanaTask(numCommande) {
 
 // ── JOINDRE PDF À UNE TÂCHE ASANA ────────────────────────────────────────────
 async function attachPdfToTask(taskGid, pdfBuffer, filename) {
-  const FormData = require('form-data');
   const form = new FormData();
   form.append('file', pdfBuffer, { filename: filename || 'ar_fournisseur.pdf', contentType: 'application/pdf' });
   form.append('parent', taskGid);
