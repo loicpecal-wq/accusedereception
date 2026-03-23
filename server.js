@@ -19,8 +19,8 @@ const ASANA_MCP = 'https://mcp.asana.com/v2/mcp';
 app.post('/api/extract-pdf', upload.single('pdf'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Aucun fichier reçu' });
 
-  const apiKey = req.headers['x-api-key'];
-  if (!apiKey) return res.status(401).json({ error: 'Clé API manquante (header x-api-key)' });
+const apiKey = process.env.ANTHROPIC_API_KEY || req.headers['x-api-key'];
+if (!apiKey) return res.status(401).json({ error: 'Clé API manquante' });
 
   const base64 = req.file.buffer.toString('base64');
 
@@ -75,7 +75,8 @@ Format attendu :
 // Cherche une tâche par N° commande CHEMDOC dans le champ custom
 app.post('/api/search-asana', async (req, res) => {
   const { num_commande, api_key } = req.body;
-  if (!num_commande || !api_key) return res.status(400).json({ error: 'num_commande et api_key requis' });
+  const apiKey2 = process.env.ANTHROPIC_API_KEY || api_key;
+if (!num_commande || !apiKey2) return res.status(400).json({ error: 'num_commande requis' });
 
   const CF_NUM_CMD   = '1207558431199239';
   const PROJECT_GID  = '1207558522608675';
@@ -88,7 +89,7 @@ app.post('/api/search-asana', async (req, res) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': api_key,
+        'x-api-key': apiKey2,
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
@@ -122,7 +123,8 @@ Retourne exactement :
 // Met à jour uniquement le champ Date de l'AR
 app.post('/api/update-asana', async (req, res) => {
   const { task_gid, date_livraison_confirmee, commentaire, api_key } = req.body;
-  if (!task_gid || !api_key) return res.status(400).json({ error: 'task_gid et api_key requis' });
+  const apiKey3 = process.env.ANTHROPIC_API_KEY || api_key;
+if (!task_gid || !apiKey3) return res.status(400).json({ error: 'task_gid requis' });
 
   const CF_DATE_AR = '1209920011141950';
 
@@ -134,7 +136,7 @@ app.post('/api/update-asana', async (req, res) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': api_key,
+        'x-api-key': apiKey3,
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
