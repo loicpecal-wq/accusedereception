@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHEMDOC — Traitement A/R Fournisseurs</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0d0f14;--surface:#13161d;--surface2:#1a1e28;--border:#252a38;--border2:#2e3547;--accent:#00d4aa;--accent2:#0099ff;--warn:#f59e0b;--danger:#ef4444;--ok:#22c55e;--text:#e8eaf0;--muted:#6b7280;--mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;--display:'Syne',sans-serif;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;min-height:100vh;}
+  header{display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid var(--border);background:var(--surface);}
+  .logo{font-family:var(--display);font-size:18px;font-weight:800;letter-spacing:.08em;color:var(--accent);}
+  .logo span{color:var(--text);font-weight:400;}
+  .badge{font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--border2);color:var(--muted);background:var(--bg);}
+  .proxy-url{font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid rgba(0,212,170,.3);color:var(--accent);background:rgba(0,212,170,.06);cursor:pointer;}
+  main{max-width:1100px;margin:0 auto;padding:32px 24px;display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media(max-width:800px){main{grid-template-columns:1fr;}}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+  .card-title{font-family:var(--display);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);}
+  .card-body{padding:20px;}
+  .steps{grid-column:1/-1;display:flex;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 28px;}
+  .step{display:flex;align-items:center;gap:10px;flex:1;}
+  .step-num{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;color:var(--muted);flex-shrink:0;transition:all .3s;}
+  .step.active .step-num{background:var(--accent);border-color:var(--accent);color:#000;font-weight:600;}
+  .step.done .step-num{background:var(--ok);border-color:var(--ok);color:#000;}
+  .step-label{font-size:13px;color:var(--muted);transition:color .3s;}
+  .step.active .step-label{color:var(--text);font-weight:500;}
+  .step.done .step-label{color:var(--ok);}
+  .step-line{flex:1;height:1px;background:var(--border2);margin:0 12px;}
+
+  /* DRAG & DROP */
+  .drop-zone{border:1.5px dashed var(--border2);border-radius:10px;padding:40px 24px;text-align:center;cursor:pointer;transition:all .25s;position:relative;background:var(--surface2);}
+  .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(0,212,170,.05);}
+  .drop-zone.drag-over{transform:scale(1.01);}
+  .drop-icon{font-size:40px;display:block;margin-bottom:14px;transition:transform .25s;}
+  .drop-zone.drag-over .drop-icon{transform:scale(1.2);}
+  .drop-zone h3{font-family:var(--display);font-size:16px;font-weight:700;margin-bottom:8px;}
+  .drop-zone p{color:var(--muted);font-size:12px;line-height:1.7;}
+  .drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .file-pill{display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.3);border-radius:8px;margin-top:12px;}
+  .file-pill .fname{font-family:var(--mono);font-size:12px;color:var(--accent);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .file-pill button{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 4px;}
+  .file-pill button:hover{color:var(--danger);}
+
+  /* CHAMPS */
+  .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .field{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;transition:border-color .2s;}
+  .field:focus-within{border-color:var(--accent);}
+  .field-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+  .field.full{grid-column:1/-1;}
+  .field input{width:100%;background:transparent;border:none;color:var(--text);font-family:var(--sans);font-size:14px;font-weight:500;outline:none;}
+  .field input::placeholder{color:var(--muted);}
+  .note{font-size:10px;color:var(--muted);margin-top:4px;font-family:var(--mono);}
+
+  /* COMPARE */
+  .compare-row{display:grid;grid-template-columns:1fr 20px 1fr;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);}
+  .compare-row:last-child{border-bottom:none;}
+  .compare-label{font-family:var(--mono);font-size:10px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;letter-spacing:.06em;}
+  .compare-val{font-size:13px;font-weight:500;}
+  .compare-val.asana{color:var(--accent2);}
+  .compare-val.ar{color:var(--accent);}
+  .status-dot{width:10px;height:10px;border-radius:50%;margin:0 auto;}
+  .status-dot.ok{background:var(--ok);box-shadow:0 0 6px var(--ok);}
+  .status-dot.warn{background:var(--warn);box-shadow:0 0 6px var(--warn);}
+
+  /* BOXES */
+  .anomaly-box{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:14px 16px;margin-bottom:10px;}
+  .anomaly-title{font-family:var(--mono);font-size:11px;color:var(--danger);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
+  .ok-box{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:14px 16px;margin-bottom:10px;}
+  .ok-box p{font-size:13px;color:var(--ok);}
+  .info-box{background:rgba(0,153,255,.06);border:1px solid rgba(0,153,255,.2);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:rgba(0,153,255,.9);line-height:1.7;}
+  .warn-box{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:rgba(245,158,11,.9);line-height:1.7;}
+
+  /* BOUTONS */
+  .action-row{display:flex;gap:10px;margin-top:20px;}
+  .btn{flex:1;padding:12px 20px;border-radius:8px;border:none;font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:.04em;cursor:pointer;transition:all .2s;}
+  .btn-primary{background:var(--accent);color:#000;}
+  .btn-primary:hover{background:#00f0c0;transform:translateY(-1px);}
+  .btn-primary:disabled{opacity:.35;transform:none;cursor:not-allowed;}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid rgba(239,68,68,.4);}
+  .btn-danger:hover{background:rgba(239,68,68,.1);}
+
+  /* STATUS */
+  .status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-family:var(--mono);font-size:11px;}
+  .status-badge.ok{background:rgba(34,197,94,.12);color:var(--ok);border:1px solid rgba(34,197,94,.3);}
+  .status-badge.pending{background:rgba(245,158,11,.12);color:var(--warn);border:1px solid rgba(245,158,11,.3);}
+  .status-badge.error{background:rgba(239,68,68,.12);color:var(--danger);border:1px solid rgba(239,68,68,.3);}
+
+  /* LOADING */
+  .loading{display:flex;align-items:center;gap:12px;padding:24px;font-family:var(--mono);font-size:13px;color:var(--muted);}
+  .spinner{width:18px;height:18px;border-radius:50%;border:2px solid var(--border2);border-top-color:var(--accent);animation:spin .8s linear infinite;flex-shrink:0;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* SUCCESS */
+  .asana-success{text-align:center;padding:32px 20px;}
+  .asana-success .check{font-size:48px;margin-bottom:16px;display:block;}
+  .asana-success h3{font-family:var(--display);font-size:18px;font-weight:700;margin-bottom:8px;color:var(--ok);}
+  .asana-success p{color:var(--muted);font-size:13px;line-height:1.7;}
+  .task-link{display:inline-flex;align-items:center;gap:6px;margin-top:16px;padding:8px 16px;border-radius:8px;background:rgba(0,153,255,.1);border:1px solid rgba(0,153,255,.3);color:var(--accent2);text-decoration:none;font-family:var(--mono);font-size:12px;transition:all .2s;}
+  .task-link:hover{background:rgba(0,153,255,.2);}
+
+  /* DIVERS */
+  textarea.comment{width:100%;padding:12px;border-radius:8px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--sans);font-size:13px;resize:vertical;min-height:72px;outline:none;transition:border-color .2s;}
+  textarea.comment:focus{border-color:var(--accent);}
+  .hidden{display:none!important;}
+  @keyframes pulse-accent{0%,100%{box-shadow:0 0 0 0 rgba(0,212,170,.4);}50%{box-shadow:0 0 0 8px rgba(0,212,170,0);}}
+  .pulse{animation:pulse-accent 2s infinite;}
+  .tag{display:inline;padding:2px 6px;background:rgba(255,255,255,.06);border-radius:4px;font-family:var(--mono);font-size:11px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">CHEM<span>DOC</span> — Traitement A/R</div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <span class="badge">✉ accusedereception26@gmail.com</span>
+    <span class="proxy-url" id="proxy-label" title="Cliquer pour configurer l'URL du proxy" onclick="configProxy()">⚙ Proxy : local</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ÉTAPES -->
+  <div class="steps">
+    <div class="step active" id="step1"><div class="step-num">1</div><div class="step-label">Dépôt PDF</div></div>
+    <div class="step-line"></div>
+    <div class="step" id="step2"><div class="step-num">2</div><div class="step-label">Extraction IA</div></div>
+    <div class="step-line"></div>
+    <div class="step" id="step3"><div class="step-num">3</div><div class="step-label">Recherche Asana</div></div>
+    <div class="step-line"></div>
+    <div class="step" id="step4"><div class="step-num">4</div><div class="step-label">Vérification</div></div>
+    <div class="step-line"></div>
+    <div class="step" id="step5"><div class="step-num">5</div><div class="step-label">Enregistrement</div></div>
+  </div>
+
+  <!-- COL GAUCHE -->
+  <div>
+    <div class="card" id="card-import">
+      <div class="card-header"><div class="card-title">📎 Dépôt du PDF A/R</div></div>
+      <div class="card-body">
+        <div class="info-box">
+          📧 L'acheteur transfère l'email A/R vers <strong>accusedereception26@gmail.com</strong>, puis dépose le PDF ici pour extraction automatique.
+        </div>
+        <div class="drop-zone" id="drop-zone">
+          <span class="drop-icon">📄</span>
+          <h3>Glisser-déposer le PDF ici</h3>
+          <p>ou cliquer pour sélectionner<br>Le fichier est lu automatiquement par Claude IA</p>
+          <input type="file" id="file-input" accept=".pdf">
+        </div>
+        <div id="file-pill-wrap" class="hidden">
+          <div class="file-pill">
+            <span class="fname" id="file-name-display">—</span>
+            <button onclick="clearFile()" title="Supprimer">✕</button>
+          </div>
+        </div>
+        <div class="action-row">
+          <button class="btn btn-primary pulse" id="btn-analyze" disabled onclick="analyzePDF()">
+            Analyser avec Claude IA →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DONNÉES EXTRAITES -->
+    <div class="card hidden" id="card-extracted" style="margin-top:20px;">
+      <div class="card-header">
+        <div class="card-title">🤖 Données extraites</div>
+        <div style="margin-left:auto;" id="extract-badge"></div>
+      </div>
+      <div class="card-body" id="extracted-body"></div>
+    </div>
+  </div>
+
+  <!-- COL DROITE -->
+  <div>
+    <div class="card hidden" id="card-compare">
+      <div class="card-header">
+        <div class="card-title">🔍 Comparaison Asana</div>
+        <div style="margin-left:auto;" id="compare-badge"></div>
+      </div>
+      <div class="card-body" id="compare-body"></div>
+    </div>
+    <div class="card hidden" id="card-validate" style="margin-top:20px;">
+      <div class="card-header"><div class="card-title">✅ Validation acheteur</div></div>
+      <div class="card-body" id="validate-body"></div>
+    </div>
+  </div>
+
+  <!-- RÉSULTAT -->
+  <div class="card hidden" id="card-result" style="grid-column:1/-1;">
+    <div class="card-body" id="result-body"></div>
+  </div>
+
+</main>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+// URL du proxy : modifier ici après déploiement sur Railway
+// ex: 'https://ar-chemdoc-proxy.up.railway.app'
+let PROXY_URL = localStorage.getItem('ar_proxy_url') || 'http://localhost:3000';
+
+// Clé API Anthropic — stockée localement dans le navigateur de l'acheteur
+let API_KEY = localStorage.getItem('ar_api_key') || '';
+
+document.getElementById('proxy-label').textContent = '⚙ Proxy : ' + (PROXY_URL.includes('localhost') ? 'local' : 'Railway');
+
+function configProxy() {
+  const url = prompt('URL du proxy (Railway ou localhost) :', PROXY_URL);
+  if (url) {
+    PROXY_URL = url.trim().replace(/\/$/, '');
+    localStorage.setItem('ar_proxy_url', PROXY_URL);
+    document.getElementById('proxy-label').textContent = '⚙ Proxy : ' + (PROXY_URL.includes('localhost') ? 'local' : 'Railway');
+  }
+}
+
+// Demande la clé API au 1er usage si non configurée
+function ensureApiKey() {
+  if (!API_KEY) {
+    API_KEY = prompt('Clé API Anthropic (stockée localement, jamais envoyée ailleurs) :');
+    if (API_KEY) localStorage.setItem('ar_api_key', API_KEY);
+  }
+  return !!API_KEY;
+}
+
+// ── ÉTAT ──────────────────────────────────────────────────────────────────────
+let currentFile = null;
+let arData = null;
+let asanaTask = null;
+let anomalies = [];
+
+// ── DRAG & DROP ───────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+['dragenter','dragover'].forEach(e => dropZone.addEventListener(e, ev => {
+  ev.preventDefault(); dropZone.classList.add('drag-over');
+}));
+['dragleave','dragend'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove('drag-over')));
+dropZone.addEventListener('drop', ev => {
+  ev.preventDefault(); dropZone.classList.remove('drag-over');
+  if (ev.dataTransfer.files[0]) applyFile(ev.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) applyFile(fileInput.files[0]); });
+
+function applyFile(f) {
+  currentFile = f;
+  document.getElementById('file-name-display').textContent = f.name + ' — ' + (f.size/1024).toFixed(0) + ' Ko';
+  document.getElementById('file-pill-wrap').classList.remove('hidden');
+  document.getElementById('btn-analyze').disabled = false;
+}
+function clearFile() {
+  currentFile = null; fileInput.value = '';
+  document.getElementById('file-pill-wrap').classList.add('hidden');
+  document.getElementById('btn-analyze').disabled = true;
+}
+
+// ── ÉTAPE 2 : EXTRACTION PDF ──────────────────────────────────────────────────
+async function analyzePDF() {
+  if (!currentFile) return;
+  if (!ensureApiKey()) return;
+
+  setStep(2);
+  document.getElementById('card-extracted').classList.remove('hidden');
+  document.getElementById('extracted-body').innerHTML = '<div class="loading"><div class="spinner"></div>Claude lit le PDF…</div>';
+
+  const formData = new FormData();
+  formData.append('pdf', currentFile);
+
+  try {
+    const res = await fetch(`${PROXY_URL}/api/extract-pdf`, {
+      method: 'POST',
+      headers: { 'x-api-key': API_KEY },
+      body: formData
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+
+    const { data } = await res.json();
+    arData = data;
+    renderExtracted(data);
+
+    // Lancer recherche Asana automatiquement
+    if (data.num_commande_chemdoc) {
+      setStep(3);
+      document.getElementById('card-compare').classList.remove('hidden');
+      document.getElementById('compare-body').innerHTML = `<div class="loading"><div class="spinner"></div>Recherche de "${data.num_commande_chemdoc}" dans Asana…</div>`;
+      document.getElementById('card-compare').scrollIntoView({behavior:'smooth'});
+      await searchAsana(data.num_commande_chemdoc);
+    }
+
+  } catch(e) {
+    document.getElementById('extracted-body').innerHTML = `
+      <div class="anomaly-box">
+        <div class="anomaly-title">Erreur extraction</div>
+        <p style="font-size:12px;line-height:1.6">${e.message}</p>
+        <p style="margin-top:8px;font-size:11px;color:var(--muted)">Vérifiez que le proxy est démarré et accessible à <span class="tag">${PROXY_URL}</span></p>
+      </div>`;
+    document.getElementById('extract-badge').innerHTML = '<span class="status-badge error">● Erreur</span>';
+  }
+}
+
+function renderExtracted(d) {
+  const conf = d.confiance === 'haute' ? 'ok' : d.confiance === 'moyenne' ? 'warn' : 'danger';
+  document.getElementById('extracted-body').innerHTML = `
+    <div class="field-grid">
+      <div class="field full">
+        <div class="field-label">N° commande CHEMDOC</div>
+        <div style="font-family:var(--mono);font-size:16px;color:var(--accent);font-weight:600;">${d.num_commande_chemdoc || '⚠ Non détecté'}</div>
+        <div class="note">N° A/R fournisseur : ${d.num_ar_fournisseur || '—'}</div>
+      </div>
+      <div class="field"><div class="field-label">Fournisseur</div><div style="font-size:14px;font-weight:500">${d.fournisseur || '—'}</div></div>
+      <div class="field"><div class="field-label">Montant HT</div><div style="font-size:14px;font-weight:500">${d.montant_ht || '—'}</div></div>
+      <div class="field"><div class="field-label">Date de l'A/R</div><div style="font-size:14px;font-weight:500">${fmt(d.date_ar) || '—'}</div></div>
+      <div class="field ${d.date_livraison_confirmee ? '' : 'warn'}">
+        <div class="field-label">Livraison confirmée → Asana</div>
+        <div style="font-size:14px;font-weight:500;color:var(--accent)">${fmt(d.date_livraison_confirmee) || '⚠ Non trouvée'}</div>
+      </div>
+      ${d.reference_produit ? `<div class="field full"><div class="field-label">Produit</div><div style="font-size:13px">${d.reference_produit}</div></div>` : ''}
+      <div class="field">
+        <div class="field-label">Confiance extraction</div>
+        <div style="font-size:13px;color:var(--${conf === 'ok' ? 'ok' : conf === 'warn' ? 'warn' : 'danger'})">${d.confiance === 'haute' ? '● Haute' : d.confiance === 'moyenne' ? '◐ Moyenne' : '○ Faible'}</div>
+      </div>
+    </div>`;
+  document.getElementById('extract-badge').innerHTML = '<span class="status-badge ok">● Extrait</span>';
+}
+
+// ── ÉTAPE 3 : RECHERCHE ASANA ─────────────────────────────────────────────────
+async function searchAsana(numCmd) {
+  try {
+    const res = await fetch(`${PROXY_URL}/api/search-asana`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ num_commande: numCmd, api_key: API_KEY })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const { task } = await res.json();
+    asanaTask = task;
+  } catch(e) {
+    asanaTask = { found: false, _err: e.message };
+  }
+  renderCompare();
+}
+
+// ── ÉTAPE 4 : COMPARAISON ─────────────────────────────────────────────────────
+function renderCompare() {
+  const body = document.getElementById('compare-body');
+  anomalies = [];
+  setStep(4);
+
+  if (asanaTask._err) {
+    body.innerHTML = `<div class="anomaly-box"><div class="anomaly-title">Connexion Asana échouée</div><p style="font-size:12px">${asanaTask._err}</p></div>`;
+    document.getElementById('compare-badge').innerHTML = '<span class="status-badge error">● Erreur</span>';
+    renderValidateOffline(); return;
+  }
+
+  if (!asanaTask.found) {
+    body.innerHTML = `<div class="anomaly-box"><div class="anomaly-title">Commande non trouvée</div><p>Aucune tâche avec N° commande = <strong style="color:var(--accent);font-family:var(--mono)">${arData.num_commande_chemdoc}</strong></p></div>`;
+    document.getElementById('compare-badge').innerHTML = '<span class="status-badge error">● Non trouvée</span>';
+    renderValidateOffline(); return;
+  }
+
+  const dLivAR = arData.date_livraison_confirmee;
+  const dConvenue = asanaTask.date_convenue;
+  const dateOk = !dLivAR || !dConvenue || dLivAR === dConvenue;
+  if (!dateOk) {
+    const diff = Math.round((new Date(dLivAR) - new Date(dConvenue)) / 86400000);
+    anomalies.push(`Livraison décalée de <strong>${diff > 0 ? '+' : ''}${diff} jours</strong> : date convenue = ${fmt(dConvenue)}, A/R confirme = ${fmt(dLivAR)}.`);
+  }
+  const fAR = (arData.fournisseur||'').toUpperCase();
+  const fAs = (asanaTask.fournisseur||'').toUpperCase();
+  const fouOk = !fAR || !fAs || fAR.includes(fAs) || fAs.includes(fAR);
+  if (!fouOk) anomalies.push(`Fournisseur : Asana="${asanaTask.fournisseur}", A/R="${arData.fournisseur}".`);
+
+  const dot = ok => `<div class="status-dot ${ok?'ok':'warn'}"></div>`;
+  body.innerHTML = `
+    <div class="compare-row">
+      <div><div class="compare-label">Tâche Asana</div><div class="compare-val asana" style="font-family:var(--mono)">${asanaTask.task_name}</div></div>
+      ${dot(true)}
+      <div><div class="compare-label">N° commande A/R</div><div class="compare-val ar" style="font-family:var(--mono)">${arData.num_commande_chemdoc}</div></div>
+    </div>
+    <div class="compare-row">
+      <div><div class="compare-label">Date convenue (Asana)</div><div class="compare-val asana">${fmt(dConvenue)||'—'}</div></div>
+      ${dot(dateOk)}
+      <div><div class="compare-label">Livraison confirmée (A/R)</div><div class="compare-val ar">${fmt(dLivAR)||'—'}</div></div>
+    </div>
+    <div class="compare-row">
+      <div><div class="compare-label">Fournisseur Asana</div><div class="compare-val asana">${asanaTask.fournisseur||'—'}</div></div>
+      ${dot(fouOk)}
+      <div><div class="compare-label">Fournisseur A/R</div><div class="compare-val ar">${arData.fournisseur||'—'}</div></div>
+    </div>
+    <div class="compare-row">
+      <div><div class="compare-label">Date de l'AR (actuelle)</div><div class="compare-val asana">${fmt(asanaTask.date_ar_actuelle)||'vide'}</div></div>
+      ${dot(true)}
+      <div><div class="compare-label">→ Sera mis à jour</div><div class="compare-val" style="color:var(--ok)">${fmt(dLivAR)||'—'}</div></div>
+    </div>
+    <div class="compare-row">
+      <div><div class="compare-label">reçu/non reçu</div><div class="compare-val asana">${asanaTask.statut_recu||'—'}</div></div>
+      ${dot(true)}
+      <div><div class="compare-label">→ Non modifié</div><div class="compare-val" style="color:var(--muted)">inchangé ✓</div></div>
+    </div>`;
+
+  document.getElementById('compare-badge').innerHTML = anomalies.length === 0
+    ? '<span class="status-badge ok">● Conforme</span>'
+    : `<span class="status-badge pending">⚠ ${anomalies.length} anomalie${anomalies.length>1?'s':''}</span>`;
+
+  renderValidate();
+}
+
+function renderValidate() {
+  const card = document.getElementById('card-validate');
+  card.classList.remove('hidden');
+  card.scrollIntoView({behavior:'smooth'});
+  let html = anomalies.length === 0
+    ? '<div class="ok-box"><p>✓ A/R conforme. La date de livraison confirmée sera enregistrée dans Asana.</p></div>'
+    : anomalies.map(a => `<div class="anomaly-box"><div class="anomaly-title">⚠ Anomalie</div><p>${a}</p></div>`).join('');
+  html += `<div style="margin-top:14px;"><div class="field-label" style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;">Commentaire acheteur (optionnel)</div>
+    <textarea class="comment" id="comment" placeholder="Note sur cet A/R…"></textarea></div>
+    <div class="action-row">
+      <button class="btn btn-primary" onclick="doUpdate(false)">✓ Enregistrer dans Asana</button>
+      <button class="btn btn-danger" onclick="doUpdate(true)">✕ Rejeter</button>
+    </div>`;
+  document.getElementById('validate-body').innerHTML = html;
+}
+
+function renderValidateOffline() {
+  const card = document.getElementById('card-validate');
+  card.classList.remove('hidden');
+  document.getElementById('validate-body').innerHTML = `<div class="ok-box"><p>Données extraites. La mise à jour Asana n'est pas disponible (proxy inaccessible).</p></div>`;
+}
+
+// ── ÉTAPE 5 : MISE À JOUR ASANA ───────────────────────────────────────────────
+async function doUpdate(rejected) {
+  setStep(5);
+  const rc = document.getElementById('card-result');
+  const rb = document.getElementById('result-body');
+  rc.classList.remove('hidden');
+  rc.scrollIntoView({behavior:'smooth'});
+
+  if (rejected) {
+    rb.innerHTML = '<div class="asana-success"><span class="check">🚫</span><h3 style="color:var(--danger)">A/R rejeté</h3><p>Aucune modification Asana.</p></div>';
+    return;
+  }
+  if (!asanaTask?.task_gid) {
+    rb.innerHTML = '<div class="anomaly-box"><div class="anomaly-title">Impossible</div><p>Tâche Asana non identifiée.</p></div>';
+    return;
+  }
+  rb.innerHTML = '<div class="loading"><div class="spinner"></div>Enregistrement dans Asana…</div>';
+
+  const comment = [
+    `A/R enregistré le ${new Date().toLocaleDateString('fr-FR')}`,
+    arData.num_ar_fournisseur ? `Réf. fournisseur : ${arData.num_ar_fournisseur}` : '',
+    document.getElementById('comment')?.value?.trim() || ''
+  ].filter(Boolean).join(' — ');
+
+  try {
+    const res = await fetch(`${PROXY_URL}/api/update-asana`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        task_gid: asanaTask.task_gid,
+        date_livraison_confirmee: arData.date_livraison_confirmee,
+        commentaire: comment,
+        api_key: API_KEY
+      })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    rb.innerHTML = `
+      <div class="asana-success">
+        <span class="check">✅</span>
+        <h3>Enregistré dans Asana</h3>
+        <p>
+          Tâche <strong style="color:var(--accent);font-family:var(--mono)">${arData.num_commande_chemdoc}</strong> — ${asanaTask.task_name}<br>
+          <strong style="color:var(--ok)">Date de l'AR</strong> : <strong>${fmt(arData.date_livraison_confirmee)||'—'}</strong><br>
+          ${anomalies.length ? `⚠ ${anomalies.length} anomalie(s) à surveiller.` : 'Aucune anomalie détectée.'}
+        </p>
+        <a class="task-link" href="https://app.asana.com/0/1207558522608675/${asanaTask.task_gid}" target="_blank">↗ Ouvrir dans Asana</a>
+      </div>`;
+  } catch(e) {
+    rb.innerHTML = `<div class="anomaly-box"><div class="anomaly-title">Erreur</div><p>${e.message}</p></div>`;
+  }
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function setStep(n) {
+  for(let i=1;i<=5;i++){
+    const el=document.getElementById('step'+i);
+    el.classList.remove('active','done');
+    if(i<n) el.classList.add('done'); else if(i===n) el.classList.add('active');
+  }
+}
+function fmt(d) {
+  if(!d) return null;
+  try{ const[y,m,j]=d.split('-'); return`${j}/${m}/${y}`; } catch{ return d; }
+}
+</script>
+</body>
+</html>
