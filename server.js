@@ -160,7 +160,7 @@ app.post('/api/update-asana', async (req, res) => {
   try {
     // Mise à jour du custom field Date de l'AR uniquement
     const body = { data: { custom_fields: {} } };
-    if (date_livraison_confirmee) body.data.custom_fields[CF_DATE_AR] = date_livraison_confirmee;
+if (date_livraison_confirmee) body.data.custom_fields[CF_DATE_AR] = { "date": date_livraison_confirmee, "time": null };
 
     const r = await fetch(`${ASANA_API}/tasks/${task_gid}`, {
       method: 'PUT',
