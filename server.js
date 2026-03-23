@@ -2,9 +2,15 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const fetch = require('node-fetch');
-const Imap = require('imap');
 const FormData = require('form-data');
-const { simpleParser } = require('mailparser');
+let Imap, simpleParser;
+try {
+  Imap = require('imap');
+  simpleParser = require('mailparser').simpleParser;
+  console.log('Modules IMAP chargés avec succès');
+} catch(e) {
+  console.error('Module IMAP non disponible:', e.message);
+}
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -224,6 +230,7 @@ ${asanaTask?.found ? `\n🔗 Tâche Asana mise à jour : ${asanaTask.task_name} 
 const processedEmails = new Set();
 
 async function scanGmail() {
+  if (!Imap || !simpleParser) return console.log('Module IMAP non disponible, scan ignoré');
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
   if (!user || !pass) return console.log('Gmail non configuré, scan ignoré');
