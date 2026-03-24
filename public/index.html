@@ -281,6 +281,31 @@ async function analyzePDF() {
     }
 
     const result = await res.json();
+    if (!result.success) throw new Error(result.error || 'Erreur serveur');
+    arData = result.extracted;
+    asanaTask = result.asanaTask || null;
+    anomalies = result.anomalies || [];
+    renderExtracted(result.extracted);
+
+    if (result.asanaTask?.found) {
+      setStep(3);
+      document.getElementById('card-compare').classList.remove('hidden');
+      renderCompare();
+    } else if (result.extracted?.num_commande_chemdoc) {
+      setStep(3);
+      document.getElementById('card-compare').classList.remove('hidden');
+      document.getElementById('compare-body').innerHTML = '<div class="loading"><div class="spinner"></div>Recherche dans Asana…</div>';
+      const r2 = await fetch(`${PROXY_URL}/api/search-asana`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ num_commande: result.extracted.num_commande_chemdoc })
+      });
+      const d2 = await r2.json();
+      asanaTask = d2.task || { found: false };
+      renderCompare();
+    }
+
+    const result = await res.json();
 arData = result.extracted;
 renderExtracted(result.extracted);
 
