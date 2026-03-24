@@ -280,9 +280,20 @@ async function analyzePDF() {
       throw new Error(err.error || `HTTP ${res.status}`);
     }
 
-    const { data } = await res.json();
-    arData = data;
-    renderExtracted(data);
+    const result = await res.json();
+arData = result.extracted;
+renderExtracted(result.extracted);
+
+if (result.asanaTask) {
+  asanaTask = result.asanaTask;
+  setStep(3);
+  document.getElementById('card-compare').classList.remove('hidden');
+  renderCompare();
+} else {
+  setStep(3);
+  document.getElementById('card-compare').classList.remove('hidden');
+  await searchAsana(result.extracted?.num_commande_chemdoc);
+}
 
     // Lancer recherche Asana automatiquement
     if (data.num_commande_chemdoc) {
