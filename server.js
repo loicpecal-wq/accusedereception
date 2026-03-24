@@ -475,7 +475,18 @@ app.post('/api/daily-report', async (req, res) => {
   try { await generateDailyReport(); res.json({ success: true, message: 'Rapport généré' }); }
   catch(e) { res.status(500).json({ error: e.message }); }
 });
-
+// Route Zapier : reçoit un PDF en base64 depuis Zapier
+app.post('/api/process-email', async (req, res) => {
+  const { pdf_base64, filename, subject } = req.body;
+  if (!pdf_base64) return res.status(400).json({ error: 'pdf_base64 manquant' });
+  try {
+    const pdfBuffer = Buffer.from(pdf_base64, 'base64');
+    const result = await processAR(pdf_base64, pdfBuffer, filename || 'ar.pdf', 'zapier');
+    res.json(result);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'AR CHEMDOC Proxy v3', suivi_project: SUIVI_PROJECT_GID }));
 
