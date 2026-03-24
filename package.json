@@ -1,7 +1,6 @@
 {
   "name": "ar-chemdoc-proxy",
   "version": "3.0.0",
-  "description": "Proxy backend AR fournisseurs CHEMDOC v3 — Gmail auto + PDF Asana + rapport quotidien",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
