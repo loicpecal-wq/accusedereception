@@ -2,14 +2,15 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const fetch = require('node-fetch');
-const FormData = require('form-data');
-let Imap, simpleParser;
+
+let Imap, simpleParser, FormData;
 try {
   Imap = require('imap');
   simpleParser = require('mailparser').simpleParser;
-  console.log('Modules IMAP chargés avec succès');
+  FormData = require('form-data');
+  console.log('Tous les modules chargés');
 } catch(e) {
-  console.error('Module IMAP non disponible:', e.message);
+  console.error('Module manquant:', e.message);
 }
 
 const app = express();
@@ -178,7 +179,7 @@ async function findAsanaTask(numCommande) {
 
 // ── JOINDRE PDF À UNE TÂCHE ASANA ────────────────────────────────────────────
 async function attachPdfToTask(taskGid, pdfBuffer, filename) {
-  const form = new FormData();
+ 
   form.append('file', pdfBuffer, { filename: filename || 'ar_fournisseur.pdf', contentType: 'application/pdf' });
   form.append('parent', taskGid);
 
