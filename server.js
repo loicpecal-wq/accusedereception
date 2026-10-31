@@ -11,7 +11,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static('public'));
+app.use(express.static(__dirname + '/public'));
 
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const ASANA_API      = 'https://app.asana.com/api/1.0';
@@ -375,6 +375,55 @@ app.post('/api/process-email', async (req, res) => {
 
 app.post('/api/scan-gmail',    async (req, res) => { await scanGmail();          res.json({ success: true }); });
 app.post('/api/daily-report',  async (req, res) => { await generateDailyReport(); res.json({ success: true }); });
+
+app.get('/api/dashboard', async (req, res) => {
+  try {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const in14  = new Date(today); in14.setDate(today.getDate() + 14);
+    const todayStr = today.toISOString().slice(0, 10);
+    const in14Str  = in14.toISOString().slice(0, 10);
+
+    const tasks = [];
+    let offset = null;
+    let page = 0;
+
+    while (page < 20) {
+      const url = `${ASANA_API}/tasks?project=${PROJECT_GID}&opt_fields=name,gid,completed,custom_fields&limit=100${offset ? '&offset=' + offset : ''}`;
+      const r = await fetch(url, { headers: asanaHeaders() });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.errors?.[0]?.message || 'Erreur Asana');
+
+      for (const task of data.data || []) {
+        if (task.completed) continue;
+        const cf = task.custom_fields || [];
+        const recuVal = (cf.find(f => f.gid === CF_RECU)?.display_value || '').toLowerCase();
+        if (recuVal === 'reçu') continue;
+
+        tasks.push({
+          task_gid:      task.gid,
+          task_name:     task.name,
+          num_cmd:       cf.find(f => f.gid === CF_NUM_CMD)?.text_value       || null,
+          fournisseur:   cf.find(f => f.gid === CF_FOURNISSEUR)?.enum_value?.name || null,
+          date_convenue: cf.find(f => f.gid === CF_CONVENUE)?.date_value?.date || null,
+          date_ar:       cf.find(f => f.gid === CF_DATE_AR)?.date_value?.date  || null,
+          statut_recu:   cf.find(f => f.gid === CF_RECU)?.display_value        || null,
+        });
+      }
+
+      if (data.next_page?.offset) { offset = data.next_page.offset; page++; } else break;
+    }
+
+    const en_cours   = tasks;
+    const en_retard  = tasks
+      .filter(t => t.date_convenue && t.date_convenue < todayStr)
+      .sort((a, b) => a.date_convenue.localeCompare(b.date_convenue));
+    const prochaines = tasks
+      .filter(t => t.date_convenue && t.date_convenue >= todayStr && t.date_convenue <= in14Str)
+      .sort((a, b) => a.date_convenue.localeCompare(b.date_convenue));
+
+    res.json({ en_cours, en_retard, prochaines, generated_at: new Date().toISOString() });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'AR CHEMDOC Proxy v3', suivi_project: SUIVI_PROJECT_GID }));
 

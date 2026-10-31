@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHEMDOC — Suivi Réceptions</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d0f14;--surface:#13161d;--surface2:#1a1e28;--border:#252a38;--border2:#2e3547;--accent:#00d4aa;--accent2:#0099ff;--warn:#f59e0b;--danger:#ef4444;--ok:#22c55e;--text:#e8eaf0;--muted:#6b7280;--mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;--display:'Syne',sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;min-height:100vh;}
+
+header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:var(--surface);}
+.logo{font-family:var(--display);font-size:17px;font-weight:800;letter-spacing:.08em;color:var(--accent);}
+.logo span{color:var(--text);font-weight:400;}
+.header-right{display:flex;align-items:center;gap:12px;}
+.badge{font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--border2);color:var(--muted);}
+.nav-link{font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--border2);color:var(--muted);text-decoration:none;transition:all .2s;}
+.nav-link:hover{border-color:var(--accent);color:var(--accent);}
+
+main{max-width:1280px;margin:0 auto;padding:28px 20px;display:flex;flex-direction:column;gap:20px;}
+
+.toolbar{display:flex;align-items:center;justify-content:space-between;}
+.page-title{font-family:var(--display);font-size:22px;font-weight:800;letter-spacing:.04em;}
+.toolbar-right{display:flex;align-items:center;gap:10px;}
+.refresh-info{font-family:var(--mono);font-size:10px;color:var(--muted);}
+.btn-refresh{padding:8px 14px;border-radius:7px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:var(--display);font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.04em;}
+.btn-refresh:hover{border-color:var(--accent);color:var(--accent);}
+.btn-refresh:disabled{opacity:.4;cursor:not-allowed;}
+
+/* BLOC */
+.bloc{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.bloc-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.bloc-icon{font-size:16px;}
+.bloc-title{font-family:var(--display);font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;}
+.bloc-count{margin-left:auto;font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500;}
+.bloc-retard  .bloc-header{background:rgba(239,68,68,.06);}
+.bloc-retard  .bloc-title{color:#f87171;}
+.bloc-retard  .bloc-count{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);}
+.bloc-prochain .bloc-header{background:rgba(245,158,11,.06);}
+.bloc-prochain .bloc-title{color:#fbbf24;}
+.bloc-prochain .bloc-count{background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3);}
+.bloc-encours .bloc-header{background:rgba(0,212,170,.04);}
+.bloc-encours .bloc-title{color:var(--accent);}
+.bloc-encours .bloc-count{background:rgba(0,212,170,.12);color:var(--accent);border:1px solid rgba(0,212,170,.3);}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+thead tr{border-bottom:1px solid var(--border2);}
+th{padding:10px 16px;text-align:left;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);white-space:nowrap;font-weight:400;}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s;cursor:pointer;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:var(--surface2);}
+td{padding:11px 16px;font-size:12px;white-space:nowrap;}
+.td-cmd{font-family:var(--mono);color:var(--accent);font-size:11px;}
+.td-nom{font-weight:500;max-width:280px;overflow:hidden;text-overflow:ellipsis;}
+.td-four{color:var(--muted);font-size:11px;}
+.td-date{font-family:var(--mono);font-size:11px;}
+.td-retard{font-family:var(--mono);font-size:11px;font-weight:500;}
+.retard-neg{color:#f87171;}
+.retard-pos{color:#fbbf24;}
+.td-link a{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:5px;background:rgba(0,153,255,.08);border:1px solid rgba(0,153,255,.2);color:var(--accent2);text-decoration:none;font-family:var(--mono);font-size:10px;transition:all .15s;}
+.td-link a:hover{background:rgba(0,153,255,.18);}
+
+.empty{padding:32px 20px;text-align:center;font-family:var(--mono);font-size:12px;color:var(--muted);}
+.ok-empty{color:var(--ok);}
+
+/* LOADING / ERROR */
+.loading-state{padding:36px 20px;display:flex;align-items:center;justify-content:center;gap:12px;font-family:var(--mono);font-size:12px;color:var(--muted);}
+.spinner{width:16px;height:16px;border-radius:50%;border:2px solid var(--border2);border-top-color:var(--accent);animation:spin .8s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.error-state{padding:20px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.25);border-radius:8px;margin:16px;font-family:var(--mono);font-size:12px;color:#f87171;}
+
+.generated{font-family:var(--mono);font-size:10px;color:var(--muted);text-align:right;padding:12px 20px;border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">CHEM<span>DOC</span> — Suivi Réceptions</div>
+  <div class="header-right">
+    <span class="badge" id="header-time">—</span>
+    <a class="nav-link" href="/">↩ Traitement A/R</a>
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <div class="page-title">Dashboard Approvisionnements</div>
+    <div class="toolbar-right">
+      <span class="refresh-info" id="next-refresh">—</span>
+      <button class="btn-refresh" id="btn-refresh" onclick="loadDashboard()">↻ Actualiser</button>
+    </div>
+  </div>
+
+  <!-- RETARD -->
+  <div class="bloc bloc-retard">
+    <div class="bloc-header">
+      <span class="bloc-icon">⚠</span>
+      <span class="bloc-title">Matériel en retard</span>
+      <span class="bloc-count" id="count-retard">—</span>
+    </div>
+    <div id="body-retard"><div class="loading-state"><div class="spinner"></div>Chargement…</div></div>
+  </div>
+
+  <!-- PROCHAINES -->
+  <div class="bloc bloc-prochain">
+    <div class="bloc-header">
+      <span class="bloc-icon">📅</span>
+      <span class="bloc-title">Prochaines livraisons — 14 jours</span>
+      <span class="bloc-count" id="count-prochaines">—</span>
+    </div>
+    <div id="body-prochaines"><div class="loading-state"><div class="spinner"></div>Chargement…</div></div>
+  </div>
+
+  <!-- EN COURS -->
+  <div class="bloc bloc-encours">
+    <div class="bloc-header">
+      <span class="bloc-icon">📦</span>
+      <span class="bloc-title">Réceptions en cours</span>
+      <span class="bloc-count" id="count-encours">—</span>
+    </div>
+    <div id="body-encours"><div class="loading-state"><div class="spinner"></div>Chargement…</div></div>
+    <div class="generated" id="generated-at"></div>
+  </div>
+</main>
+
+<script>
+const PROXY_URL    = 'https://accusedereception-production.up.railway.app';
+const PROJECT_GID  = '1207558522608675';
+const REFRESH_MS   = 5 * 60 * 1000;
+let   refreshTimer = null;
+let   nextRefreshAt = null;
+
+// ── CHARGEMENT ────────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  document.getElementById('btn-refresh').disabled = true;
+  ['retard','prochaines','encours'].forEach(k => {
+    document.getElementById('body-' + k).innerHTML =
+      '<div class="loading-state"><div class="spinner"></div>Chargement…</div>';
+    document.getElementById('count-' + k).textContent = '—';
+  });
+
+  try {
+    const r = await fetch(`${PROXY_URL}/api/dashboard`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+
+    renderBloc('retard',    d.en_retard,  renderTableRetard);
+    renderBloc('prochaines',d.prochaines, renderTableProchaines);
+    renderBloc('encours',   d.en_cours,   renderTableEncours);
+
+    document.getElementById('count-retard').textContent    = d.en_retard.length;
+    document.getElementById('count-prochaines').textContent = d.prochaines.length;
+    document.getElementById('count-encours').textContent   = d.en_cours.length;
+
+    if (d.generated_at) {
+      document.getElementById('generated-at').textContent =
+        'Mis à jour : ' + new Date(d.generated_at).toLocaleString('fr-FR');
+      document.getElementById('header-time').textContent =
+        new Date(d.generated_at).toLocaleTimeString('fr-FR');
+    }
+  } catch(e) {
+    ['retard','prochaines','encours'].forEach(k => {
+      document.getElementById('body-' + k).innerHTML =
+        `<div class="error-state">Erreur : ${e.message}</div>`;
+    });
+  } finally {
+    document.getElementById('btn-refresh').disabled = false;
+    scheduleNext();
+  }
+}
+
+function renderBloc(key, items, renderFn) {
+  document.getElementById('body-' + key).innerHTML =
+    items.length === 0 ? emptyHtml(key) : renderFn(items);
+}
+
+// ── TABLES ────────────────────────────────────────────────────────────────────
+function renderTableRetard(items) {
+  const rows = items.map(t => {
+    const jours = daysDiff(t.date_convenue);
+    return `<tr onclick="openAsana('${t.task_gid}')">
+      <td class="td-cmd">${esc(t.num_cmd) || '—'}</td>
+      <td class="td-nom">${esc(t.task_name)}</td>
+      <td class="td-four">${esc(t.fournisseur) || '—'}</td>
+      <td class="td-date">${fmtDate(t.date_convenue)}</td>
+      <td class="td-retard retard-neg">${jours !== null ? jours + 'j' : '—'}</td>
+      <td class="td-date" style="color:var(--muted)">${fmtDate(t.date_ar) || '—'}</td>
+      <td class="td-link"><a href="${asanaUrl(t.task_gid)}" target="_blank" onclick="e=>e.stopPropagation()">↗ Asana</a></td>
+    </tr>`;
+  }).join('');
+  return `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>N° CMD</th><th>Tâche</th><th>Fournisseur</th>
+      <th>Date convenue</th><th>Retard</th><th>Date A/R</th><th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function renderTableProchaines(items) {
+  const rows = items.map(t => {
+    const jours = daysDiff(t.date_convenue);
+    const cls   = jours !== null && jours <= 3 ? 'retard-pos' : '';
+    return `<tr onclick="openAsana('${t.task_gid}')">
+      <td class="td-cmd">${esc(t.num_cmd) || '—'}</td>
+      <td class="td-nom">${esc(t.task_name)}</td>
+      <td class="td-four">${esc(t.fournisseur) || '—'}</td>
+      <td class="td-date" style="color:var(--warn)">${fmtDate(t.date_convenue)}</td>
+      <td class="td-retard ${cls}">${jours !== null ? 'J−' + Math.abs(jours) : '—'}</td>
+      <td class="td-date" style="color:var(--muted)">${fmtDate(t.date_ar) || '—'}</td>
+      <td class="td-link"><a href="${asanaUrl(t.task_gid)}" target="_blank" onclick="e=>e.stopPropagation()">↗ Asana</a></td>
+    </tr>`;
+  }).join('');
+  return `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>N° CMD</th><th>Tâche</th><th>Fournisseur</th>
+      <th>Date convenue</th><th>Échéance</th><th>Date A/R</th><th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function renderTableEncours(items) {
+  const rows = items.map(t => {
+    return `<tr onclick="openAsana('${t.task_gid}')">
+      <td class="td-cmd">${esc(t.num_cmd) || '—'}</td>
+      <td class="td-nom">${esc(t.task_name)}</td>
+      <td class="td-four">${esc(t.fournisseur) || '—'}</td>
+      <td class="td-date">${fmtDate(t.date_convenue) || '<span style="color:var(--muted)">—</span>'}</td>
+      <td class="td-date" style="color:var(--muted)">${fmtDate(t.date_ar) || '—'}</td>
+      <td class="td-link"><a href="${asanaUrl(t.task_gid)}" target="_blank" onclick="e=>e.stopPropagation()">↗ Asana</a></td>
+    </tr>`;
+  }).join('');
+  return `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>N° CMD</th><th>Tâche</th><th>Fournisseur</th>
+      <th>Date convenue</th><th>Date A/R</th><th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function emptyHtml(key) {
+  const msgs = {
+    retard:     { icon: '✓', text: 'Aucun retard — tout est dans les délais', cls: 'ok-empty' },
+    prochaines: { icon: '📭', text: 'Aucune livraison dans les 14 prochains jours', cls: '' },
+    encours:    { icon: '📭', text: 'Aucune commande en attente de réception', cls: '' },
+  };
+  const m = msgs[key];
+  return `<div class="empty ${m.cls}">${m.icon} ${m.text}</div>`;
+}
+
+function fmtDate(d) {
+  if (!d) return null;
+  try { const [y,m,j] = d.split('-'); return `${j}/${m}/${y}`; } catch { return d; }
+}
+
+function daysDiff(dateStr) {
+  if (!dateStr) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(dateStr);
+  return Math.round((target - today) / 86400000);
+}
+
+function asanaUrl(gid) {
+  return `https://app.asana.com/0/${PROJECT_GID}/${gid}`;
+}
+
+function openAsana(gid) {
+  window.open(asanaUrl(gid), '_blank');
+}
+
+function esc(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function scheduleNext() {
+  clearTimeout(refreshTimer);
+  nextRefreshAt = Date.now() + REFRESH_MS;
+  refreshTimer  = setTimeout(loadDashboard, REFRESH_MS);
+  updateCountdown();
+}
+
+function updateCountdown() {
+  const el = document.getElementById('next-refresh');
+  if (!nextRefreshAt) return;
+  const secs = Math.max(0, Math.round((nextRefreshAt - Date.now()) / 1000));
+  const m = Math.floor(secs / 60), s = secs % 60;
+  el.textContent = `Actualisation dans ${m}:${String(s).padStart(2,'0')}`;
+  if (secs > 0) setTimeout(updateCountdown, 1000);
+}
+
+loadDashboard();
+</script>
+</body>
+</html>
